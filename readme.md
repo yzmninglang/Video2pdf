@@ -58,6 +58,30 @@ docker rm -f $(docker ps -aq --filter "name=video2pdf-batch") 2>/dev/null || tru
 
 然后重试 `docker-compose up -d --build`。
 
+### 3) 仅拉取镜像运行（不本地 build）
+
+新增了 `docker-compose.image.yml`，用于直接拉取镜像。
+
+```bash
+cd /home/yzmin/OSRP/video2pdf
+mkdir -p state_data
+
+VIDEO2PDF_IMAGE=video2pdf-batch:latest \
+HOST_PORT=7861 STATE_DIR=./state_data \
+docker compose -f docker-compose.image.yml pull
+
+VIDEO2PDF_IMAGE=video2pdf-batch:latest \
+HOST_PORT=7861 STATE_DIR=./state_data \
+docker compose -f docker-compose.image.yml up -d
+```
+
+如果你的镜像在远端仓库，例如：
+
+```bash
+VIDEO2PDF_IMAGE=ghcr.io/your-org/video2pdf-batch:latest \
+docker compose -f docker-compose.image.yml up -d
+```
+
 ## FastAPI 接口
 
 - `GET /health`：健康检查。

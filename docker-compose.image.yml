@@ -1,0 +1,25 @@
+version: "3.9"
+
+services:
+  video2pdf:
+    image: ${VIDEO2PDF_IMAGE:-video2pdf-batch:latest}
+    pull_policy: always
+    container_name: video2pdf-batch
+    ports:
+      - "${HOST_PORT:-7860}:7860"
+    volumes:
+      - ./example:/data
+      - ${STATE_DIR:-./state_data}:/state
+    restart: unless-stopped
+    environment:
+      NO_PROXY: ${NO_PROXY:-localhost,127.0.0.1,::1}
+    command:
+      - "--server-name"
+      - "0.0.0.0"
+      - "--server-port"
+      - "7860"
+      - "--mapped-dir"
+      - "/data"
+      - "--state-dir"
+      - "/state"
+
