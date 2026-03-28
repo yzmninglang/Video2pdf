@@ -1,0 +1,65 @@
+:root {
+  --bg: #f4f6f8;
+  --panel: #ffffff;
+  --primary: #0b7285;
+  --primary-deep: #084c61;
+  --text: #1f2a37;
+  --muted: #4b5563;
+  --border: #d7dee6;
+}
+
+.gradio-container {
+  background: radial-gradient(circle at 20% 20%, #e9f5f9 0%, var(--bg) 42%);
+  min-height: 100vh;
+  color: var(--text);
+}
+
+#hero-title {
+  border-radius: 16px;
+  background: linear-gradient(132deg, #083c4a 0%, #0b7285 55%, #11a1bc 100%);
+  color: #ffffff;
+  padding: 20px;
+  margin-bottom: 12px;
+  box-shadow: 0 14px 40px rgba(8, 60, 74, 0.18);
+}
+
+.panel,
+.pickers,
+.summary {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px;
+  box-shadow: 0 8px 26px rgba(31, 42, 55, 0.08);
+}
+
+.hint {
+  color: var(--muted);
+}
+
+button.primary {
+  background: linear-gradient(135deg, var(--primary) 0%, #1697af 100%) !important;
+  border: none !important;
+}
+
+button.primary:hover {
+  background: linear-gradient(135deg, var(--primary-deep) 0%, #127a90 100%) !important;
+}
+
+@media (max-width: 900px) {
+  #hero-title {
+    padding: 14px;
+    border-radius: 12px;
+  }
+
+  .panel,
+  .pickers,
+  .summary {
+    padding: 10px;
+    border-radius: 12px;
+  }
+
+  .gradio-container {
+    font-size: 15px;
+  }
+}

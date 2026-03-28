@@ -56,3 +56,11 @@ docker-compose.override.yml
 # Docker runtime / temp
 tmp/
 temp/
+
+# Generated outputs
+*.pdf
+*.json
+
+# Keep sample media out of git
+example/\[P61]4.8 分治与傅里叶变换之快速傅里叶变换.mp4
+prompt.md
