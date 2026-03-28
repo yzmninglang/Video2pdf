@@ -10,6 +10,7 @@
     <header class="hero">
       <h1>Video2PDF 批量处理器</h1>
       <p>FastAPI 后台任务模式。提交后可关闭网页，任务继续执行。</p>
+      <p class="hero-links"><a href="/history">查看历史任务归档</a></p>
     </header>
 
     <main class="container">
@@ -113,6 +114,7 @@
             </label>
           </div>
           <div class="row check-row">
+            <label><input id="enableFrameDiffRefine" type="checkbox" /> 在 MOG2/KNN 中启用 FrameDiff 二次确认</label>
             <label><input id="removeDuplicates" type="checkbox" checked /> 自动去重</label>
             <label><input id="keepIntermediate" type="checkbox" /> 保留中间截图</label>
           </div>
@@ -126,7 +128,7 @@
 
       <section class="card">
         <div class="row split">
-          <h2>任务列表</h2>
+          <h2>任务列表（仅进行中）</h2>
           <button id="refreshJobsBtn">刷新</button>
         </div>
         <div class="table-wrap">

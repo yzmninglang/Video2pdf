@@ -32,6 +32,7 @@ const el = {
   diffBinaryThreshold: document.getElementById("diffBinaryThreshold"),
   diffMotionPercent: document.getElementById("diffMotionPercent"),
   elapsedFrameThreshold: document.getElementById("elapsedFrameThreshold"),
+  enableFrameDiffRefine: document.getElementById("enableFrameDiffRefine"),
   removeDuplicates: document.getElementById("removeDuplicates"),
   hashFunc: document.getElementById("hashFunc"),
   hashSize: document.getElementById("hashSize"),
@@ -119,8 +120,11 @@ function validateConfig(config) {
 }
 
 function collectConfig() {
+  const algorithm = el.algorithm.value;
+  const frameDiffRefine = algorithm !== "FrameDiff" && el.enableFrameDiffRefine.checked;
+
   return {
-    algorithm: el.algorithm.value,
+    algorithm,
     frame_rate: parseNumber(el.frameRate),
     warmup_frames: parseNumber(el.warmupFrames),
     resize_width: parseNumber(el.resizeWidth),
@@ -132,6 +136,7 @@ function collectConfig() {
     diff_binary_threshold: parseNumber(el.diffBinaryThreshold),
     diff_motion_percent: parseNumber(el.diffMotionPercent),
     elapsed_frame_threshold: parseNumber(el.elapsedFrameThreshold),
+    enable_frame_diff_refine: frameDiffRefine,
     remove_duplicates: el.removeDuplicates.checked,
     hash_func: el.hashFunc.value,
     hash_size: parseNumber(el.hashSize),
@@ -155,12 +160,24 @@ function applyConfig(config) {
   el.diffBinaryThreshold.value = config.diff_binary_threshold;
   el.diffMotionPercent.value = config.diff_motion_percent;
   el.elapsedFrameThreshold.value = config.elapsed_frame_threshold;
+  el.enableFrameDiffRefine.checked = !!config.enable_frame_diff_refine;
   el.removeDuplicates.checked = config.remove_duplicates;
   el.hashFunc.value = config.hash_func;
   el.hashSize.value = config.hash_size;
   el.similarityThreshold.value = config.similarity_threshold;
   el.hashQueueLen.value = config.hash_queue_len;
   el.keepIntermediate.checked = config.keep_intermediate;
+  syncAlgorithmDependentControls();
+}
+
+function syncAlgorithmDependentControls() {
+  const isFrameDiff = el.algorithm.value === "FrameDiff";
+  if (isFrameDiff) {
+    el.enableFrameDiffRefine.checked = false;
+    el.enableFrameDiffRefine.disabled = true;
+  } else {
+    el.enableFrameDiffRefine.disabled = false;
+  }
 }
 
 function renderJobs(jobs) {
@@ -438,7 +455,8 @@ async function submitJob() {
 async function refreshJobs() {
   try {
     const data = await api("/api/jobs");
-    renderJobs(data.jobs || []);
+    const activeJobs = (data.jobs || []).filter((job) => ["queued", "running"].includes(String(job.status)));
+    renderJobs(activeJobs);
   } catch (err) {
     toast(`刷新任务失败: ${err.message}`, true);
   }
@@ -490,6 +508,7 @@ function registerConfigAutoSave() {
     el.similarityThreshold,
     el.hashQueueLen,
     el.keepIntermediate,
+    el.enableFrameDiffRefine,
   ];
 
   controls.forEach((item) => {
@@ -504,6 +523,12 @@ function registerConfigAutoSave() {
   });
 
   el.rootDir.addEventListener("change", debounceSaveSettings);
+
+  el.algorithm.addEventListener("change", () => {
+    syncAlgorithmDependentControls();
+    refreshConfigStatus();
+    debounceSaveSettings();
+  });
 }
 
 el.scanBtn.addEventListener("click", scanDir);

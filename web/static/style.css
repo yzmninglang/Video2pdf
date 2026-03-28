@@ -45,6 +45,19 @@ body {
   opacity: 0.9;
 }
 
+.hero-links {
+  margin-top: 10px;
+}
+
+.hero-links a {
+  color: #e6fbff;
+  text-decoration: underline;
+}
+
+.hero-links a:hover {
+  color: #ffffff;
+}
+
 .container {
   width: 100%;
   max-width: 1200px;

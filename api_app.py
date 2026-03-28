@@ -49,6 +49,7 @@ class ProcessingConfigInput(BaseModel):
     diff_binary_threshold: int = 80
     diff_motion_percent: float = 0.06
     elapsed_frame_threshold: int = 85
+    enable_frame_diff_refine: bool = False
 
     remove_duplicates: bool = True
     hash_func: str = "dhash"
@@ -72,6 +73,7 @@ class ProcessingConfigInput(BaseModel):
             diff_binary_threshold=self.diff_binary_threshold,
             diff_motion_percent=self.diff_motion_percent,
             elapsed_frame_threshold=self.elapsed_frame_threshold,
+            enable_frame_diff_refine=self.enable_frame_diff_refine,
             remove_duplicates=self.remove_duplicates,
             hash_func=self.hash_func,
             hash_size=self.hash_size,
@@ -440,6 +442,8 @@ def submit_job(request: SubmitJobRequest) -> dict:
         from engine import validate_processing_config
 
         validate_processing_config(config)
+        if config.algorithm.upper() == "FRAMEDIFF":
+            config.enable_frame_diff_refine = False
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=f"参数不合法: {exc}")
 
@@ -498,6 +502,14 @@ def index() -> FileResponse:
     if not index_file.exists():
         raise HTTPException(status_code=404, detail="frontend not found")
     return FileResponse(index_file)
+
+
+@app.get("/history")
+def history_page() -> FileResponse:
+    history_file = WEB_ROOT / "history.html"
+    if not history_file.exists():
+        raise HTTPException(status_code=404, detail="history page not found")
+    return FileResponse(history_file)
 
 
 def parse_args() -> argparse.Namespace:

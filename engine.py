@@ -41,6 +41,7 @@ class ProcessingConfig:
     diff_binary_threshold: int = 80
     diff_motion_percent: float = 0.06
     elapsed_frame_threshold: int = 85
+    enable_frame_diff_refine: bool = False
 
     remove_duplicates: bool = True
     hash_func: str = "dhash"
@@ -90,6 +91,8 @@ def validate_processing_config(config: ProcessingConfig) -> None:
         raise ValueError("motion_percent must be greater than stable_percent")
     if config.algorithm.upper() not in {"MOG2", "KNN", "FRAMEDIFF"}:
         raise ValueError("algorithm must be one of: MOG2, KNN, FrameDiff")
+    if config.diff_motion_percent < 0:
+        raise ValueError("diff_motion_percent must be >= 0")
     if config.hash_func.lower() not in HASH_FUNC_SET:
         raise ValueError("hash_func must be one of: dhash, phash, ahash")
     if config.hash_queue_len <= 0:
@@ -250,6 +253,9 @@ def _extract_by_bg_modeling(
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     capture_enabled = False
     screenshot_count = 0
+    use_frame_diff_refine = bool(config.enable_frame_diff_refine)
+    prev_gray = None
+    diff_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7)) if use_frame_diff_refine else None
 
     try:
         while cap.isOpened():
@@ -266,18 +272,35 @@ def _extract_by_bg_modeling(
             resized = _resize_keep_ratio(frame, config.resize_width)
             mask = subtractor.apply(resized)
 
+            diff_motion_percent = 0.0
+            if use_frame_diff_refine:
+                gray = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
+                if prev_gray is not None:
+                    frame_diff = cv2.absdiff(gray, prev_gray)
+                    _, frame_diff = cv2.threshold(
+                        frame_diff,
+                        config.diff_binary_threshold,
+                        255,
+                        cv2.THRESH_BINARY,
+                    )
+                    frame_diff = cv2.dilate(frame_diff, diff_kernel)
+                    diff_motion_percent = (cv2.countNonZero(frame_diff) / float(frame_diff.size)) * 100.0
+                prev_gray = gray
+
             if frame_no <= config.warmup_frames:
                 continue
 
             foreground_percent = (cv2.countNonZero(mask) / float(mask.size)) * 100.0
+            diff_stable = (not use_frame_diff_refine) or (diff_motion_percent < config.diff_motion_percent)
+            diff_moving = use_frame_diff_refine and (diff_motion_percent >= config.diff_motion_percent)
 
-            if foreground_percent <= config.stable_percent and not capture_enabled:
+            if foreground_percent <= config.stable_percent and diff_stable and not capture_enabled:
                 capture_enabled = True
                 screenshot_count += 1
 
                 output_file = image_dir / f"{screenshot_count:04d}.jpg"
                 cv2.imwrite(str(output_file), frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
-            elif capture_enabled and foreground_percent >= config.motion_percent:
+            elif capture_enabled and (foreground_percent >= config.motion_percent or diff_moving):
                 capture_enabled = False
     finally:
         cap.release()

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Video2PDF 历史任务</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <header class="hero">
+      <h1>历史任务归档</h1>
+      <p>仅显示已完成/失败/停止的任务，不影响主页进行中任务视图。</p>
+      <p class="hero-links"><a href="/">返回主页</a></p>
+    </header>
+
+    <main class="container">
+      <section class="card">
+        <div class="row split">
+          <h2>历史任务列表</h2>
+          <button id="refreshHistoryBtn">刷新</button>
+        </div>
+        <p id="historyStatus" class="hint"></p>
+        <div class="table-wrap">
+          <table id="historyTable">
+            <thead>
+              <tr>
+                <th>Job ID</th>
+                <th>Status</th>
+                <th>Total</th>
+                <th>Pending</th>
+                <th>Running</th>
+                <th>OK</th>
+                <th>Failed</th>
+                <th>Created At</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="row split">
+          <h2>任务详情</h2>
+          <div class="inline">
+            <input id="jobIdInput" type="text" placeholder="输入 Job ID" />
+            <button id="viewDetailBtn">查看</button>
+          </div>
+        </div>
+        <p id="detailStatus" class="hint"></p>
+        <div class="table-wrap">
+          <table id="detailTable">
+            <thead>
+              <tr>
+                <th>Video</th>
+                <th>Status</th>
+                <th>Progress</th>
+                <th>Slides</th>
+                <th>PDF</th>
+                <th>Message</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script src="/static/history.js"></script>
+  </body>
+</html>
