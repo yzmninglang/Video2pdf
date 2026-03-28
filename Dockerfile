@@ -3,7 +3,6 @@ FROM python:3.12-slim AS runtime
 ARG HTTP_PROXY
 ARG HTTPS_PROXY
 ARG NO_PROXY
-
 ENV HTTP_PROXY=${HTTP_PROXY}
 ENV HTTPS_PROXY=${HTTPS_PROXY}
 ENV NO_PROXY=${NO_PROXY}
@@ -18,12 +17,11 @@ WORKDIR /app
 COPY requirements.txt /app/requirements.txt
 RUN pip install -r /app/requirements.txt
 
-COPY engine.py job_manager.py web_app.py web_style.css /app/
-
-RUN useradd -m -u 10001 appuser
-USER appuser
+COPY engine.py job_manager.py api_app.py /app/
+COPY web /app/web
+USER root
 
 EXPOSE 7860
 
-ENTRYPOINT ["python", "web_app.py"]
+ENTRYPOINT ["python", "api_app.py"]
 CMD ["--server-name", "0.0.0.0", "--server-port", "7860", "--mapped-dir", "/data", "--state-dir", "/state"]

@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Video2PDF FastAPI</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <header class="hero">
+      <h1>Video2PDF 批量处理器</h1>
+      <p>FastAPI 后台任务模式。提交后可关闭网页，任务继续执行。</p>
+    </header>
+
+    <main class="container">
+      <section class="card">
+        <h2>目录扫描</h2>
+        <div class="row">
+          <label for="rootDir">目录映射地址</label>
+          <input id="rootDir" type="text" placeholder="例如 /data" />
+        </div>
+        <div class="row actions">
+          <button id="scanBtn">扫描目录</button>
+        </div>
+        <p id="scanStatus" class="hint"></p>
+
+        <div class="pickers one-col">
+          <div>
+            <h3>选择文件夹（全部列出，递归处理）</h3>
+            <div id="folderList" class="checklist"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>视频搜索（正则）</h2>
+        <p class="hint">不全量展示视频。用正则搜索后选择结果；支持多个模式，使用逗号/分号/换行分隔。</p>
+        <div class="row">
+          <label for="videoPattern">正则模式</label>
+          <input id="videoPattern" type="text" placeholder="例如: chapter1|P61, .*傅里叶.*" />
+          <button id="searchVideosBtn">搜索</button>
+        </div>
+        <p id="searchStatus" class="hint"></p>
+        <div class="pickers one-col">
+          <div>
+            <h3>搜索结果（勾选加入任务）</h3>
+            <div id="fileList" class="checklist"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>参数设置</h2>
+        <p id="settingsStatus" class="hint">参数会自动保存。</p>
+        <details>
+          <summary>阈值与算法参数</summary>
+          <div class="grid">
+            <label>算法
+              <select id="algorithm">
+                <option value="MOG2">MOG2</option>
+                <option value="KNN">KNN</option>
+                <option value="FrameDiff">FrameDiff</option>
+              </select>
+            </label>
+            <label>处理帧间隔
+              <input id="frameRate" type="number" min="1" max="6" value="1" />
+            </label>
+            <label>Warmup 帧数
+              <input id="warmupFrames" type="number" min="0" max="50" value="1" />
+            </label>
+            <label>缩放宽度
+              <input id="resizeWidth" type="number" min="320" max="1600" value="640" />
+            </label>
+            <label>背景历史
+              <input id="history" type="number" min="5" max="300" value="15" />
+            </label>
+            <label>MOG2 varThreshold
+              <input id="varThreshold" type="number" min="1" max="200" value="16" step="0.1" />
+            </label>
+            <label>KNN distThreshold
+              <input id="distThreshold" type="number" min="10" max="2000" value="400" step="1" />
+            </label>
+            <label>静止阈值 (%)
+              <input id="stablePercent" type="number" min="0.01" max="10" value="0.1" step="0.01" />
+            </label>
+            <label>运动阈值 (%)
+              <input id="motionPercent" type="number" min="0.1" max="30" value="2" step="0.1" />
+            </label>
+            <label>FrameDiff 二值阈值
+              <input id="diffBinaryThreshold" type="number" min="1" max="255" value="80" />
+            </label>
+            <label>FrameDiff 运动阈值 (%)
+              <input id="diffMotionPercent" type="number" min="0.01" max="15" value="0.06" step="0.01" />
+            </label>
+            <label>FrameDiff 延迟抓取帧数
+              <input id="elapsedFrameThreshold" type="number" min="1" max="300" value="85" />
+            </label>
+            <label>哈希算法
+              <select id="hashFunc">
+                <option value="dhash">dhash</option>
+                <option value="phash">phash</option>
+                <option value="ahash">ahash</option>
+              </select>
+            </label>
+            <label>哈希尺寸
+              <input id="hashSize" type="number" min="8" max="24" value="12" />
+            </label>
+            <label>相似度阈值 (%)
+              <input id="similarityThreshold" type="number" min="85" max="100" value="96" />
+            </label>
+            <label>去重历史窗口
+              <input id="hashQueueLen" type="number" min="1" max="30" value="5" />
+            </label>
+          </div>
+          <div class="row check-row">
+            <label><input id="removeDuplicates" type="checkbox" checked /> 自动去重</label>
+            <label><input id="keepIntermediate" type="checkbox" /> 保留中间截图</label>
+          </div>
+        </details>
+
+        <div class="row actions">
+          <button id="submitBtn" class="primary">提交后台任务</button>
+        </div>
+        <p id="submitStatus" class="hint"></p>
+      </section>
+
+      <section class="card">
+        <div class="row split">
+          <h2>任务列表</h2>
+          <button id="refreshJobsBtn">刷新</button>
+        </div>
+        <div class="table-wrap">
+          <table id="jobsTable">
+            <thead>
+              <tr>
+                <th>Job ID</th>
+                <th>Status</th>
+                <th>Total</th>
+                <th>Pending</th>
+                <th>Running</th>
+                <th>OK</th>
+                <th>Failed</th>
+                <th>Created At</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="row split">
+          <h2>任务详情</h2>
+          <div class="inline">
+            <input id="jobIdInput" type="text" placeholder="输入 Job ID" />
+            <button id="viewDetailBtn">查看</button>
+          </div>
+        </div>
+        <p id="detailStatus" class="hint"></p>
+        <div class="table-wrap">
+          <table id="detailTable">
+            <thead>
+              <tr>
+                <th>Video</th>
+                <th>Status</th>
+                <th>Progress</th>
+                <th>Slides</th>
+                <th>PDF</th>
+                <th>Message</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

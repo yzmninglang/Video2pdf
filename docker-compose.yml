@@ -10,7 +10,6 @@ services:
         NO_PROXY: ${NO_PROXY:-localhost,127.0.0.1,::1}
     image: video2pdf-batch:latest
     container_name: video2pdf-batch
-    user: "${APP_UID:-1000}:${APP_GID:-1000}"
     ports:
       - "${HOST_PORT:-7860}:7860"
     volumes:
