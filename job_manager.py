@@ -10,7 +10,7 @@ from pathlib import Path
 from queue import Empty, Queue
 from typing import Dict, Iterable, List, Optional
 
-from engine import ProcessingConfig, ProcessingResult, process_video
+from engine import ProcessingConfig, ProcessingResult, cleanup_video_cache, process_video
 
 
 @dataclass
@@ -73,6 +73,7 @@ class JobStore:
                 "job_id": job_id,
                 "root_dir": root_dir,
                 "status": "queued",
+                "stop_requested": False,
                 "created_at": now,
                 "started_at": "",
                 "ended_at": "",
@@ -175,9 +176,51 @@ class JobStore:
                 return
 
             summary = job.get("summary", {})
+            if job.get("status") == "stopped":
+                self._refresh_summary(job)
+                self._save()
+                return
+
             failed = int(summary.get("failed", 0))
             job["status"] = "done" if failed == 0 else "done_with_errors"
             job["ended_at"] = _utc_now()
+            self._refresh_summary(job)
+            self._save()
+
+    def request_stop(self, job_id: str) -> bool:
+        with self._lock:
+            job = self._jobs.get(job_id)
+            if job is None:
+                return False
+
+            if job.get("status") in {"done", "done_with_errors", "failed", "stopped"}:
+                return False
+
+            job["stop_requested"] = True
+            self._save()
+            return True
+
+    def mark_job_stopped(self, job_id: str, message: str = "stopped by user") -> None:
+        with self._lock:
+            job = self._jobs.get(job_id)
+            if job is None:
+                return
+
+            now = _utc_now()
+            job["status"] = "stopped"
+            job["stop_requested"] = True
+            if not job.get("started_at"):
+                job["started_at"] = now
+            job["ended_at"] = now
+
+            for item in job.get("videos", []):
+                if item.get("status") in {"pending", "running"}:
+                    item["status"] = "stopped"
+                    item["message"] = message
+                    if not item.get("started_at"):
+                        item["started_at"] = now
+                    item["ended_at"] = now
+
             self._refresh_summary(job)
             self._save()
 
@@ -233,7 +276,7 @@ class JobStore:
                 running += 1
             elif status == "ok":
                 ok += 1
-            elif status in {"failed", "error"}:
+            elif status in {"failed", "error", "stopped"}:
                 failed += 1
 
         total = len(job.get("videos", []))
@@ -250,6 +293,7 @@ class JobManager:
     def __init__(self, store_path: Path):
         self.store = JobStore(store_path=store_path)
         self.queue: Queue[str] = Queue()
+        self._stop_events: Dict[str, threading.Event] = {}
         self._thread = threading.Thread(target=self._worker_loop, daemon=True)
         self._thread.start()
         self._requeue_resumable_jobs()
@@ -260,6 +304,7 @@ class JobManager:
             raise ValueError("no videos to process")
 
         job_id = self.store.create_job(root_dir, video_list, config)
+        self._stop_events[job_id] = threading.Event()
         self.queue.put(job_id)
         return job_id
 
@@ -268,6 +313,17 @@ class JobManager:
 
     def get_job(self, job_id: str) -> Optional[dict]:
         return self.store.get_job(job_id)
+
+    def stop(self, job_id: str) -> bool:
+        requested = self.store.request_stop(job_id)
+        if not requested:
+            return False
+
+        self._stop_events.setdefault(job_id, threading.Event()).set()
+        job = self.store.get_job(job_id)
+        if job and job.get("status") == "queued":
+            self.store.mark_job_stopped(job_id)
+        return True
 
     def _requeue_resumable_jobs(self) -> None:
         for job_id in self.store.resumable_job_ids():
@@ -290,14 +346,27 @@ class JobManager:
         if job is None:
             return
 
+        status = str(job.get("status", ""))
+        if status in {"done", "done_with_errors", "failed", "stopped"}:
+            return
+
+        stop_event = self._stop_events.setdefault(job_id, threading.Event())
+        if bool(job.get("stop_requested")) or stop_event.is_set():
+            self.store.mark_job_stopped(job_id)
+            return
+
         try:
             self.store.mark_job_running(job_id)
             config = _deserialize_config(job.get("config", {}))
             videos = job.get("videos", [])
 
             for index, item in enumerate(videos):
+                if stop_event.is_set():
+                    self.store.mark_job_stopped(job_id)
+                    break
+
                 current_status = item.get("status")
-                if current_status == "ok":
+                if current_status in {"ok", "stopped"}:
                     continue
 
                 video_path = Path(item.get("path", ""))
@@ -312,12 +381,26 @@ class JobManager:
                         status="running",
                     )
 
-                result = process_video(video_path, config, progress_callback=on_progress)
+                result = process_video(
+                    video_path,
+                    config,
+                    progress_callback=on_progress,
+                    stop_callback=stop_event.is_set,
+                )
+
+                if result.status == "stopped":
+                    cleanup_video_cache(video_path)
                 self.store.finalize_video(job_id, index, result)
+
+                if result.status == "stopped":
+                    self.store.mark_job_stopped(job_id)
+                    break
 
             self.store.finalize_job(job_id)
         except Exception as exc:
             self.store.fail_job(job_id, str(exc))
+        finally:
+            self._stop_events.pop(job_id, None)
 
 
 def _serialize_config(config: ProcessingConfig) -> dict:

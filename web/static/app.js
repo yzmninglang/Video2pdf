@@ -167,7 +167,7 @@ function renderJobs(jobs) {
   el.jobsTableBody.innerHTML = "";
   if (!jobs.length) {
     const row = document.createElement("tr");
-    row.innerHTML = '<td colspan="8">暂无任务</td>';
+    row.innerHTML = '<td colspan="9">暂无任务</td>';
     el.jobsTableBody.appendChild(row);
     return;
   }
@@ -175,6 +175,10 @@ function renderJobs(jobs) {
   jobs.forEach((job) => {
     const tr = document.createElement("tr");
     const s = job.summary;
+    const canStop = ["queued", "running"].includes(String(job.status));
+    const actionHtml = canStop
+      ? `<button class="danger stop-job-btn" data-job-id="${job.job_id}">停止</button>`
+      : "-";
     const cells = [
       ["Job ID", job.job_id],
       ["Status", job.status],
@@ -184,6 +188,7 @@ function renderJobs(jobs) {
       ["OK", s.ok],
       ["Failed", s.failed],
       ["Created At", job.created_at || ""],
+      ["Action", actionHtml],
     ];
     tr.innerHTML = cells
       .map(([label, value]) => `<td data-label="${label}">${value}</td>`)
@@ -195,8 +200,31 @@ function renderJobs(jobs) {
       loadJobDetail();
     });
 
+    const stopBtn = tr.querySelector(".stop-job-btn");
+    if (stopBtn) {
+      stopBtn.addEventListener("click", async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        await stopJob(job.job_id);
+      });
+    }
+
     el.jobsTableBody.appendChild(tr);
   });
+}
+
+async function stopJob(jobId) {
+  if (!jobId) return;
+  try {
+    const data = await api(`/api/jobs/${encodeURIComponent(jobId)}/stop`, { method: "POST" });
+    toast(data.message || "已请求停止任务");
+    await refreshJobs();
+    if (state.lastJobId === jobId || el.jobIdInput.value.trim() === jobId) {
+      await loadJobDetail();
+    }
+  } catch (err) {
+    toast(`停止任务失败: ${err.message}`, true);
+  }
 }
 
 function renderJobDetail(job) {

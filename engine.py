@@ -61,6 +61,11 @@ class ProcessingResult:
 
 
 ProgressCallback = Callable[[float, str], None]
+StopCallback = Callable[[], bool]
+
+
+class ProcessingCancelled(Exception):
+    pass
 
 
 def is_video_file(path: Path) -> bool:
@@ -101,10 +106,12 @@ def process_video(
     video_path: Path,
     config: ProcessingConfig,
     progress_callback: Optional[ProgressCallback] = None,
+    stop_callback: Optional[StopCallback] = None,
 ) -> ProcessingResult:
     validate_processing_config(config)
 
     video_path = video_path.expanduser().resolve()
+    _check_cancel(stop_callback)
     _emit_progress(progress_callback, 0.0, "starting")
 
     if not is_video_file(video_path):
@@ -144,6 +151,7 @@ def process_video(
                 image_dir,
                 config,
                 progress_callback=progress_callback,
+                stop_callback=stop_callback,
             )
         else:
             capture_count = _extract_by_bg_modeling(
@@ -151,8 +159,10 @@ def process_video(
                 image_dir,
                 config,
                 progress_callback=progress_callback,
+                stop_callback=stop_callback,
             )
 
+        _check_cancel(stop_callback)
         _emit_progress(progress_callback, 0.88, "extract_finished")
 
         if capture_count == 0:
@@ -165,7 +175,9 @@ def process_video(
             )
 
         if config.remove_duplicates:
+            _check_cancel(stop_callback)
             _remove_duplicate_images(image_dir, config)
+        _check_cancel(stop_callback)
         _emit_progress(progress_callback, 0.95, "deduplicate_finished")
 
         images = _list_images(image_dir)
@@ -187,6 +199,14 @@ def process_video(
             status="ok",
             message="completed",
         )
+    except ProcessingCancelled:
+        return ProcessingResult(
+            video_path=video_path,
+            pdf_path=None,
+            slide_count=0,
+            status="stopped",
+            message="stopped by user",
+        )
     except Exception as exc:
         return ProcessingResult(
             video_path=video_path,
@@ -205,6 +225,7 @@ def _extract_by_bg_modeling(
     image_dir: Path,
     config: ProcessingConfig,
     progress_callback: Optional[ProgressCallback] = None,
+    stop_callback: Optional[StopCallback] = None,
 ) -> int:
     cap = cv2.VideoCapture(str(video_path))
     if not cap.isOpened():
@@ -232,6 +253,7 @@ def _extract_by_bg_modeling(
 
     try:
         while cap.isOpened():
+            _check_cancel(stop_callback)
             ret, frame = cap.read()
             if not ret:
                 break
@@ -268,6 +290,7 @@ def _extract_by_frame_diff(
     image_dir: Path,
     config: ProcessingConfig,
     progress_callback: Optional[ProgressCallback] = None,
+    stop_callback: Optional[StopCallback] = None,
 ) -> int:
     cap = cv2.VideoCapture(str(video_path))
     if not cap.isOpened():
@@ -290,6 +313,7 @@ def _extract_by_frame_diff(
 
     try:
         while cap.isOpened():
+            _check_cancel(stop_callback)
             ret, frame = cap.read()
             if not ret:
                 break
@@ -415,6 +439,11 @@ def _emit_progress(
     progress_callback(clamped, message)
 
 
+def _check_cancel(stop_callback: Optional[StopCallback]) -> None:
+    if stop_callback is not None and stop_callback():
+        raise ProcessingCancelled("stopped by user")
+
+
 def _emit_frame_progress(
     progress_callback: Optional[ProgressCallback],
     frame_no: int,
@@ -470,3 +499,19 @@ def _bits_to_int(bits: np.ndarray) -> int:
 
 def _hamming_distance(hash_a: int, hash_b: int) -> int:
     return (hash_a ^ hash_b).bit_count()
+
+
+def cleanup_video_cache(video_path: Path) -> None:
+    video_path = video_path.expanduser().resolve()
+    output_pdf_dir = video_path.parent / "pdf"
+
+    image_dir = output_pdf_dir / f"{video_path.stem}_images"
+    if image_dir.exists() and image_dir.is_dir():
+        for file in image_dir.glob("*"):
+            if file.is_file():
+                file.unlink(missing_ok=True)
+        image_dir.rmdir()
+
+    partial_pdf = output_pdf_dir / f"{video_path.stem}.pdf"
+    if partial_pdf.exists() and partial_pdf.is_file():
+        partial_pdf.unlink(missing_ok=True)

@@ -66,6 +66,7 @@ docker rm -f $(docker ps -aq --filter "name=video2pdf-batch") 2>/dev/null || tru
 - `POST /api/scan`：扫描目录，仅返回文件夹列表和总视频计数。
 - `POST /api/videos/search`：按正则搜索视频（支持多模式）。
 - `POST /api/jobs`：提交后台任务。
+- `POST /api/jobs/{job_id}/stop`：停止任务，并自动清理该任务当前视频的中间缓存（如生成图片）。
 - `GET /api/jobs`：任务列表。
 - `GET /api/jobs/{job_id}`：任务详情。
 

@@ -269,6 +269,7 @@ def format_job_summary(job: dict) -> dict:
     return {
         "job_id": str(job.get("job_id", "")),
         "status": str(job.get("status", "")),
+        "stop_requested": bool(job.get("stop_requested", False)),
         "created_at": str(job.get("created_at", "")),
         "started_at": str(job.get("started_at", "")),
         "ended_at": str(job.get("ended_at", "")),
@@ -474,6 +475,21 @@ def get_job(job_id: str, root_dir: Optional[str] = None) -> dict:
         raise HTTPException(status_code=404, detail=f"未找到任务: {job_id}")
 
     return {"job": format_job_detail(job, root_dir=root_dir)}
+
+
+@app.post("/api/jobs/{job_id}/stop")
+def stop_job(job_id: str) -> dict:
+    if context is None:
+        raise HTTPException(status_code=500, detail="server context not initialized")
+
+    job = context.job_manager.get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail=f"未找到任务: {job_id}")
+
+    ok = context.job_manager.stop(job_id)
+    if not ok:
+        return {"ok": False, "message": f"任务不可停止: {job_id}"}
+    return {"ok": True, "message": f"已请求停止任务: {job_id}"}
 
 
 @app.get("/")

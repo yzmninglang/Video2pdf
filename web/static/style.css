@@ -114,6 +114,16 @@ button.primary {
   border: none;
 }
 
+button.danger {
+  background: #b42318;
+  color: #fff;
+  border: none;
+}
+
+button.danger:hover {
+  background: #8f1d14;
+}
+
 button.primary:hover {
   background: linear-gradient(135deg, var(--primary-strong), #0f8299);
 }
