@@ -50,6 +50,7 @@ class ProcessingConfigInput(BaseModel):
     diff_motion_percent: float = 0.06
     elapsed_frame_threshold: int = 85
     enable_frame_diff_refine: bool = False
+    auto_detect_orientation: bool = False
 
     remove_duplicates: bool = True
     hash_func: str = "dhash"
@@ -74,6 +75,7 @@ class ProcessingConfigInput(BaseModel):
             diff_motion_percent=self.diff_motion_percent,
             elapsed_frame_threshold=self.elapsed_frame_threshold,
             enable_frame_diff_refine=self.enable_frame_diff_refine,
+            auto_detect_orientation=self.auto_detect_orientation,
             remove_duplicates=self.remove_duplicates,
             hash_func=self.hash_func,
             hash_size=self.hash_size,

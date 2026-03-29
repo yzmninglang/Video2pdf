@@ -50,6 +50,7 @@ class ProcessingConfig:
     hash_queue_len: int = 5
 
     keep_intermediate: bool = False
+    auto_detect_orientation: bool = False
 
 
 @dataclass
@@ -193,7 +194,12 @@ def process_video(
                 message="all images removed during deduplication",
             )
 
-        _convert_images_to_pdf(images, output_pdf_path)
+        portrait_triplet_mode = config.auto_detect_orientation and _is_portrait_images(images)
+        _convert_images_to_pdf(
+            images,
+            output_pdf_path,
+            portrait_triplet_mode=portrait_triplet_mode,
+        )
         _emit_progress(progress_callback, 1.0, "done")
         return ProcessingResult(
             video_path=video_path,
@@ -410,19 +416,29 @@ def _remove_duplicate_images(image_dir: Path, config: ProcessingConfig) -> None:
             history_hashes.append(image_hash)
 
 
-def _convert_images_to_pdf(images: Iterable[Path], output_pdf_path: Path) -> None:
+def _convert_images_to_pdf(
+    images: Iterable[Path],
+    output_pdf_path: Path,
+    portrait_triplet_mode: bool = False,
+) -> None:
     output_pdf_path.parent.mkdir(parents=True, exist_ok=True)
     image_paths = list(images)
     if not image_paths:
         raise RuntimeError("no images found for PDF conversion")
 
-    pil_images: List[Image.Image] = []
+    source_images: List[Image.Image] = []
+    pages: List[Image.Image] = []
     try:
         for image_path in image_paths:
             with Image.open(image_path) as image:
-                pil_images.append(image.convert("RGB"))
+                source_images.append(image.convert("RGB"))
 
-        first_image, *remaining_images = pil_images
+        if portrait_triplet_mode:
+            pages = _build_portrait_triplet_pages(source_images)
+        else:
+            pages = source_images
+
+        first_image, *remaining_images = pages
         first_image.save(
             output_pdf_path,
             save_all=True,
@@ -430,8 +446,61 @@ def _convert_images_to_pdf(images: Iterable[Path], output_pdf_path: Path) -> Non
             format="PDF",
         )
     finally:
-        for image in pil_images:
+        for image in source_images:
             image.close()
+        for page in pages:
+            if all(page is not source for source in source_images):
+                page.close()
+
+
+def _is_portrait_images(images: List[Path]) -> bool:
+    if not images:
+        return False
+
+    with Image.open(images[0]) as first_image:
+        width, height = first_image.size
+    return height > width
+
+
+def _build_portrait_triplet_pages(images: List[Image.Image]) -> List[Image.Image]:
+    prepared = [img.copy() for img in images]
+    if not prepared:
+        return []
+
+    while len(prepared) % 3 != 0:
+        prepared.append(prepared[-1].copy())
+
+    pages: List[Image.Image] = []
+    for idx in range(0, len(prepared), 3):
+        chunk = prepared[idx : idx + 3]
+        target_height = max(item.height for item in chunk)
+        resized_chunk: List[Image.Image] = []
+
+        for item in chunk:
+            if item.height == target_height:
+                resized_chunk.append(item)
+            else:
+                new_width = max(1, int(item.width * target_height / item.height))
+                resized_chunk.append(item.resize((new_width, target_height), Image.Resampling.LANCZOS))
+
+        page_width = sum(item.width for item in resized_chunk)
+        page = Image.new("RGB", (page_width, target_height), color="white")
+
+        cursor = 0
+        for item in resized_chunk:
+            page.paste(item, (cursor, 0))
+            cursor += item.width
+
+        pages.append(page)
+
+        for item_index, item in enumerate(resized_chunk):
+            if item is not chunk[item_index]:
+                item.close()
+
+    for item in prepared:
+        item.close()
+
+    return pages
 
 
 def _resize_keep_ratio(frame, resize_width: int):

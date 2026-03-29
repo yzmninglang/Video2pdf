@@ -33,6 +33,7 @@ const el = {
   diffMotionPercent: document.getElementById("diffMotionPercent"),
   elapsedFrameThreshold: document.getElementById("elapsedFrameThreshold"),
   enableFrameDiffRefine: document.getElementById("enableFrameDiffRefine"),
+  autoDetectOrientation: document.getElementById("autoDetectOrientation"),
   removeDuplicates: document.getElementById("removeDuplicates"),
   hashFunc: document.getElementById("hashFunc"),
   hashSize: document.getElementById("hashSize"),
@@ -137,6 +138,7 @@ function collectConfig() {
     diff_motion_percent: parseNumber(el.diffMotionPercent),
     elapsed_frame_threshold: parseNumber(el.elapsedFrameThreshold),
     enable_frame_diff_refine: frameDiffRefine,
+    auto_detect_orientation: el.autoDetectOrientation.checked,
     remove_duplicates: el.removeDuplicates.checked,
     hash_func: el.hashFunc.value,
     hash_size: parseNumber(el.hashSize),
@@ -161,6 +163,7 @@ function applyConfig(config) {
   el.diffMotionPercent.value = config.diff_motion_percent;
   el.elapsedFrameThreshold.value = config.elapsed_frame_threshold;
   el.enableFrameDiffRefine.checked = !!config.enable_frame_diff_refine;
+  el.autoDetectOrientation.checked = !!config.auto_detect_orientation;
   el.removeDuplicates.checked = config.remove_duplicates;
   el.hashFunc.value = config.hash_func;
   el.hashSize.value = config.hash_size;
@@ -503,6 +506,7 @@ function registerConfigAutoSave() {
     el.diffMotionPercent,
     el.elapsedFrameThreshold,
     el.removeDuplicates,
+    el.autoDetectOrientation,
     el.hashFunc,
     el.hashSize,
     el.similarityThreshold,
