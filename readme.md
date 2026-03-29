@@ -27,6 +27,55 @@
 - `web/`：前端静态页面（HTML/CSS/JS）。
 - `Dockerfile` / `docker-compose.yml`：容器化部署。
 
+## Docker容器化运行
+
+使用docker-compose.yml
+
+```yaml
+version: "3.9"
+
+services:
+  video2pdf:
+    image: ghcr.io/yzmninglang/video2pdf:latest
+    container_name: video2pdf-batch
+    user: "0:0"
+    ports:
+      - "7862:7862"
+    volumes:
+      # 格式为 [宿主机路径]:[容器内路径]
+      - /vol1/1000/课程:/data
+      - ./state_data:/state
+    restart: always
+    command:
+      - "--server-name"
+      - "0.0.0.0"
+      - "--server-port"
+      - "7862"
+      - "--mapped-dir"
+      - "/data"
+      - "--state-dir"
+      - "/state"
+```
+
+直接运行
+
+```bash
+docker run -d \
+  --name video2pdf-batch \
+  --user "0:0" \
+  -p 7862:7862 \
+  -v /vol1/1000/课程:/data \
+  -v $(pwd)/state_data:/state \
+  --restart always \
+  ghcr.io/yzmninglang/video2pdf:latest \
+  --server-name 0.0.0.0 \
+  --server-port 7862 \
+  --mapped-dir /data \
+  --state-dir /state
+```
+
+
+
 ## Docker 构建与运行
 
 ### 1) 推荐命令（兼容旧版 docker-compose）
@@ -111,3 +160,11 @@ python api_app.py --mapped-dir ./example --state-dir ./state_data --server-name 
 ```text
 http://127.0.0.1:7860
 ```
+
+
+
+## 鸣谢
+
+该项目离不开如下项目的支持
+
+- [binh234/video2slides: Video to Slides Converter](https://github.com/binh234/video2slides)
