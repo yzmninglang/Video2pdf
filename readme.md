@@ -169,3 +169,4 @@ http://127.0.0.1:7860
 该项目离不开如下项目的支持
 
 - [binh234/video2slides: Video to Slides Converter](https://github.com/binh234/video2slides)
+- 本项目也在[LINUX DO](https://linux.do/) 社区 进行分享与交流，感谢社区的支持与反馈
