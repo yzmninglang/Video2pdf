@@ -230,6 +230,20 @@ th {
   font-size: 14px;
 }
 
+.site-footer {
+  margin: 10px auto 20px;
+  width: min(1200px, 100%);
+  padding: 0 16px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.site-footer a {
+  color: var(--primary-strong);
+  word-break: break-all;
+}
+
 @media (max-width: 900px) {
   .pickers {
     grid-template-columns: 1fr;
