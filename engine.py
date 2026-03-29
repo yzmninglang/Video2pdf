@@ -194,7 +194,11 @@ def process_video(
                 message="all images removed during deduplication",
             )
 
-        portrait_triplet_mode = config.auto_detect_orientation and _is_portrait_images(images)
+        portrait_triplet_mode = False
+        if config.auto_detect_orientation:
+            portrait_triplet_mode = _detect_video_portrait_mode(video_path)
+            if not portrait_triplet_mode:
+                portrait_triplet_mode = _is_portrait_images(images)
         _convert_images_to_pdf(
             images,
             output_pdf_path,
@@ -460,6 +464,76 @@ def _is_portrait_images(images: List[Path]) -> bool:
     with Image.open(images[0]) as first_image:
         width, height = first_image.size
     return height > width
+
+
+def _detect_video_portrait_mode(
+    video_path: Path,
+    sample_count: int = 10,
+    trim_frames: int = 10,
+) -> bool:
+    cap = cv2.VideoCapture(str(video_path))
+    if not cap.isOpened():
+        return False
+
+    try:
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        if total_frames <= 0:
+            return False
+
+        start = trim_frames
+        end = total_frames - trim_frames - 1
+        if end < start:
+            start = 0
+            end = total_frames - 1
+
+        frame_span = end - start + 1
+        if frame_span <= 0:
+            return False
+
+        sample_total = min(sample_count, frame_span)
+        sample_indices = _build_even_indices(start, end, sample_total)
+
+        portrait_count = 0
+        landscape_count = 0
+
+        for frame_index in sample_indices:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, float(frame_index))
+            ok, frame = cap.read()
+            if not ok or frame is None:
+                continue
+
+            height, width = frame.shape[:2]
+            if height > width:
+                portrait_count += 1
+            elif width > height:
+                landscape_count += 1
+
+        if portrait_count > landscape_count:
+            return True
+        if landscape_count > portrait_count:
+            return False
+
+        frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        return frame_height > frame_width
+    finally:
+        cap.release()
+
+
+def _build_even_indices(start: int, end: int, count: int) -> List[int]:
+    if count <= 1:
+        return [start]
+
+    if end <= start:
+        return [start]
+
+    indices: List[int] = []
+    for idx in range(count):
+        ratio = idx / (count - 1)
+        position = int(round(start + (end - start) * ratio))
+        if not indices or position != indices[-1]:
+            indices.append(position)
+    return indices
 
 
 def _build_portrait_triplet_pages(images: List[Image.Image]) -> List[Image.Image]:
