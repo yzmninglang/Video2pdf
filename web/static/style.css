@@ -335,23 +335,29 @@ th {
   }
 
   #jobsTable thead,
+  #historyTable thead,
   #detailTable thead {
     display: none;
   }
 
   #jobsTable,
+  #historyTable,
   #detailTable,
   #jobsTable tbody,
+  #historyTable tbody,
   #detailTable tbody,
   #jobsTable tr,
+  #historyTable tr,
   #detailTable tr,
   #jobsTable td,
+  #historyTable td,
   #detailTable td {
     display: block;
     width: 100%;
   }
 
   #jobsTable tr,
+  #historyTable tr,
   #detailTable tr {
     border: 1px solid var(--border);
     border-radius: 10px;
@@ -361,6 +367,7 @@ th {
   }
 
   #jobsTable td,
+  #historyTable td,
   #detailTable td {
     border-bottom: none;
     padding: 5px 0;
@@ -369,6 +376,7 @@ th {
   }
 
   #jobsTable td::before,
+  #historyTable td::before,
   #detailTable td::before {
     content: attr(data-label) ": ";
     font-weight: 600;
