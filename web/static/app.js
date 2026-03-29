@@ -34,6 +34,7 @@ const el = {
   elapsedFrameThreshold: document.getElementById("elapsedFrameThreshold"),
   enableFrameDiffRefine: document.getElementById("enableFrameDiffRefine"),
   autoDetectOrientation: document.getElementById("autoDetectOrientation"),
+  forcePortrait916: document.getElementById("forcePortrait916"),
   removeDuplicates: document.getElementById("removeDuplicates"),
   hashFunc: document.getElementById("hashFunc"),
   hashSize: document.getElementById("hashSize"),
@@ -139,6 +140,7 @@ function collectConfig() {
     elapsed_frame_threshold: parseNumber(el.elapsedFrameThreshold),
     enable_frame_diff_refine: frameDiffRefine,
     auto_detect_orientation: el.autoDetectOrientation.checked,
+    force_portrait_9_16: el.forcePortrait916.checked,
     remove_duplicates: el.removeDuplicates.checked,
     hash_func: el.hashFunc.value,
     hash_size: parseNumber(el.hashSize),
@@ -164,6 +166,7 @@ function applyConfig(config) {
   el.elapsedFrameThreshold.value = config.elapsed_frame_threshold;
   el.enableFrameDiffRefine.checked = !!config.enable_frame_diff_refine;
   el.autoDetectOrientation.checked = !!config.auto_detect_orientation;
+  el.forcePortrait916.checked = !!config.force_portrait_9_16;
   el.removeDuplicates.checked = config.remove_duplicates;
   el.hashFunc.value = config.hash_func;
   el.hashSize.value = config.hash_size;
@@ -507,6 +510,7 @@ function registerConfigAutoSave() {
     el.elapsedFrameThreshold,
     el.removeDuplicates,
     el.autoDetectOrientation,
+    el.forcePortrait916,
     el.hashFunc,
     el.hashSize,
     el.similarityThreshold,

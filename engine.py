@@ -51,6 +51,7 @@ class ProcessingConfig:
 
     keep_intermediate: bool = False
     auto_detect_orientation: bool = False
+    force_portrait_9_16: bool = False
 
 
 @dataclass
@@ -194,8 +195,8 @@ def process_video(
                 message="all images removed during deduplication",
             )
 
-        portrait_triplet_mode = False
-        if config.auto_detect_orientation:
+        portrait_triplet_mode = bool(config.force_portrait_9_16)
+        if not portrait_triplet_mode and config.auto_detect_orientation:
             portrait_triplet_mode = _detect_video_portrait_mode(video_path)
             if not portrait_triplet_mode:
                 portrait_triplet_mode = _is_portrait_images(images)
@@ -203,6 +204,7 @@ def process_video(
             images,
             output_pdf_path,
             portrait_triplet_mode=portrait_triplet_mode,
+            force_portrait_9_16=config.force_portrait_9_16,
         )
         _emit_progress(progress_callback, 1.0, "done")
         return ProcessingResult(
@@ -424,6 +426,7 @@ def _convert_images_to_pdf(
     images: Iterable[Path],
     output_pdf_path: Path,
     portrait_triplet_mode: bool = False,
+    force_portrait_9_16: bool = False,
 ) -> None:
     output_pdf_path.parent.mkdir(parents=True, exist_ok=True)
     image_paths = list(images)
@@ -438,7 +441,10 @@ def _convert_images_to_pdf(
                 source_images.append(image.convert("RGB"))
 
         if portrait_triplet_mode:
-            pages = _build_portrait_triplet_pages(source_images)
+            pages = _build_portrait_triplet_pages(
+                source_images,
+                force_portrait_9_16=force_portrait_9_16,
+            )
         else:
             pages = source_images
 
@@ -536,10 +542,20 @@ def _build_even_indices(start: int, end: int, count: int) -> List[int]:
     return indices
 
 
-def _build_portrait_triplet_pages(images: List[Image.Image]) -> List[Image.Image]:
+def _build_portrait_triplet_pages(
+    images: List[Image.Image],
+    force_portrait_9_16: bool = False,
+) -> List[Image.Image]:
     prepared = [img.copy() for img in images]
     if not prepared:
         return []
+
+    if force_portrait_9_16:
+        converted = []
+        for item in prepared:
+            converted.append(_force_resize_to_portrait_9_16(item))
+            item.close()
+        prepared = converted
 
     while len(prepared) % 3 != 0:
         prepared.append(prepared[-1].copy())
@@ -575,6 +591,16 @@ def _build_portrait_triplet_pages(images: List[Image.Image]) -> List[Image.Image
         item.close()
 
     return pages
+
+
+def _force_resize_to_portrait_9_16(image: Image.Image) -> Image.Image:
+    source = image.convert("RGB")
+    width, height = source.size
+    target_height = max(height, int(round(width * 16 / 9)))
+    target_width = max(1, int(round(target_height * 9 / 16)))
+    resized = source.resize((target_width, target_height), Image.Resampling.LANCZOS)
+    source.close()
+    return resized
 
 
 def _resize_keep_ratio(frame, resize_width: int):
