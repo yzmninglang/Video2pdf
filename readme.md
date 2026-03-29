@@ -1,5 +1,7 @@
 # Video2PDF Batch Web (FastAPI)
 
+![image-20260329133820975](readme.assets/image-20260329133820975.png)
+
 该工程使用 **FastAPI + 原生前端 + 后台任务队列**，支持视频批量转 PDF，且任务不依赖网页连接。
 
 ## 核心能力
@@ -30,12 +32,12 @@
 ### 1) 推荐命令（兼容旧版 docker-compose）
 
 ```bash
-cd /home/yzmin/OSRP/video2pdf
+cd ~/video2pdf
 mkdir -p state_data
 
 STATE_DIR=./state_data HOST_PORT=7861 \
-HTTP_PROXY=http://hinas-v4.ninglang.top:7892/ \
-HTTPS_PROXY=http://hinas-v4.ninglang.top:7892/ \
+HTTP_PROXY=xxx \
+HTTPS_PROXY=xxx \
 docker-compose up -d --build
 ```
 
@@ -66,7 +68,7 @@ docker rm -f $(docker ps -aq --filter "name=video2pdf-batch") 2>/dev/null || tru
 新增了 `docker-compose.image.yml`，用于直接拉取镜像。
 
 ```bash
-cd /home/yzmin/OSRP/video2pdf
+cd ~P/video2pdf
 mkdir -p state_data
 
 VIDEO2PDF_IMAGE=video2pdf-batch:latest \
