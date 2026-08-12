@@ -1,3 +1,5 @@
+
+
 # Video2PDF Batch Web (FastAPI)
 
 ![image-20260329133820975](readme.assets/image-20260329133820975.png)
@@ -118,7 +120,7 @@ docker rm -f $(docker ps -aq --filter "name=video2pdf-batch") 2>/dev/null || tru
 新增了 `docker-compose.image.yml`，用于直接拉取镜像。
 
 ```bash
-cd ~P/video2pdf
+cd video2pdf
 mkdir -p state_data
 
 VIDEO2PDF_IMAGE=video2pdf-batch:latest \
